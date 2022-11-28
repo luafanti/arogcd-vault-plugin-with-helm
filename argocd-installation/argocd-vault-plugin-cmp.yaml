@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cmp-plugin
+data:
+  plugin.yaml: |
+    apiVersion: argoproj.io/v1alpha1
+    kind: ConfigManagementPlugin
+    metadata:
+      name: argocd-vault-plugin-helm
+    spec:
+      allowConcurrency: true
+      discover:
+        find:
+          command:
+            - sh
+            - "-c"
+            - "find . -name 'Chart.yaml' && find . -name 'values.yaml'"
+      init:
+       command:
+          - bash
+          - "-c"
+          - |
+            helm repo add bitnami https://charts.bitnami.com/bitnami
+            helm dependency build
+      generate:
+        command:
+          - bash
+          - "-c"
+          - |
+            helm template $ARGOCD_APP_NAME -n $ARGOCD_APP_NAMESPACE -f <(echo "$ARGOCD_ENV_HELM_VALUES") . |
+            argocd-vault-plugin generate -s toolbox:argocd-vault-plugin-credentials -
+      lockRepo: false
